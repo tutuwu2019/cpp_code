@@ -1,0 +1,11 @@
+ 1027  mkdir -r cpp
+ 1028  mkdir cpp
+ 1029  cp  ../test_/c_cpp_/timer/lst_timer.h  cpp/
+ 1030  ls cpp
+ 1031  git add cpp/lst_timer.h 
+ 1032  git commit -m "add lst_timer.h to cpp directory"
+ 1033  git push origin main
+ 1034  git log
+ 1035  history | tail -10
+ 1036  ls
+ 1037  history | tail -11 > operator.txt
