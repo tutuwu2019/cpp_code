@@ -31,6 +31,8 @@ int main(){
     Address: 140730562807772
     Value at address: 42
 */
+
+/*
 int main() {
     int a = 42;
     int* p = &a;
@@ -51,3 +53,47 @@ int main() {
 
     return 0;
 }
+
+*/
+
+
+
+
+class Base {
+public:
+    virtual void show() {
+        std::cout << "Base class" << std::endl;
+    }
+    void tmp(){
+        std::cout<<"Base tmp func"<<std::endl;
+    }
+};
+
+class Derived : public Base {
+public:
+    void show() override {
+        std::cout << "Derived class" << std::endl;
+    }
+};
+
+/*
+    基类与派生类对象  互换
+
+        Derived class
+        Base tmp func
+        Derived class
+*/
+int main() {
+    Derived d;
+    Base* basePtr = reinterpret_cast<Base*>(&d); // 基类和派生类之间的转换
+    Derived* d2 = reinterpret_cast<Derived*>(basePtr);
+
+    basePtr->show();
+    
+    basePtr->tmp();
+    
+    d2->show();
+    
+    return 0;
+}
+
