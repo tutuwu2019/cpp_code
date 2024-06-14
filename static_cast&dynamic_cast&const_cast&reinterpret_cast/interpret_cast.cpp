@@ -8,7 +8,9 @@ int main(){
     std::cout<<int_ref_val<<std::endl;
     
     int int_val = 77;
-    
+
+
+    // 注意 跨类型换换 不保证安全问题  比如下面这个跨类型 引用转换
     float& long_ref = reinterpret_cast<float&>(int_val);
     std::cout<<long_ref<<std::endl;
     
