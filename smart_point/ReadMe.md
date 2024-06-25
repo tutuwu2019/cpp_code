@@ -5,8 +5,7 @@
 ## 智能指针的发展历史
 [智能指针的迭代历史](https://www.cnblogs.com/tp-16b/p/9033370.html)
 
-
-
+[这篇笔记写的很好](https://github.com/balloonwj/CppGuide/blob/master/articles/C%2B%2B%E5%BF%85%E7%9F%A5%E5%BF%85%E4%BC%9A%E7%9A%84%E7%9F%A5%E8%AF%86%E7%82%B9/%E8%AF%A6%E8%A7%A3C%2B%2B11%E4%B8%AD%E7%9A%84%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88.md)
 
 ## demo 介绍
 1. tmp_0625_01 介绍了 auto_ptr 但是在我的环境跑不动，c++11已经弃用了，通过 get获取指针地址
