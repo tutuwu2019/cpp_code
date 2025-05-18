@@ -1,0 +1,18 @@
+# 忽略编译生成的文件
+*.o
+*.exe
+*.out
+
+# 忽略 IDE 文件
+*.cbp
+*.layout
+*.depend
+
+# 忽略临时文件
+*.tmp
+*.log
+
+# 忽略构建目录
+build/
+bin/
+obj/
