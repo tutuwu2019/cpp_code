@@ -1,0 +1,1 @@
+g++ -std=c++17 -g -o0 metro_data.cpp -o metro_data -lPocoJSON    -L/usr/local/lib64 -lPocoNetSSL -lPocoNet  -lPocoFoundation
