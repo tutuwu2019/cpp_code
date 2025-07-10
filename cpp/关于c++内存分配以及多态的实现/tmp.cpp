@@ -18,7 +18,7 @@ public:
 };
 
 float Basic::alias = 0.23333;
-// int Basic::x1 = 10;  //  不在类外定义 会报定义为使用错误  undefined reference to `Basic::x1'
+// int Basic::x1 = 10;  //  不在类外定义 会报定义为使用错误  undefined reference to `Basic::x1'  如果没有通过类对象或者类通过作用域符调用 便不会报这个错误。简单来说，就是声明不分配空间
 
 int main(){
     Basic tmp;
