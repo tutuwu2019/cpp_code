@@ -5,4 +5,8 @@ bool solution(int x){
   if(x < 1){
     return false;
   }
-  while(x % 2 ==)
+  while(x % 2 == 0){
+    x /= 2;
+  }
+  return (x == 1);
+}
