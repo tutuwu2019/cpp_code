@@ -4,6 +4,9 @@
 
 class Solution {
 public:
+    // 埃氏筛法：从2(因为已经知道2是质数)开始，逐个将每个质数的背书标记为非质数，最终留下的没有被标记的数就是质数。  O(nloglogn)
+    // 说明：  0和1不是质数，其余暂定为质数
+
     int countPrimes2(int n){
         if(n < 2){
             return false;
