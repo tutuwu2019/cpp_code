@@ -516,3 +516,237 @@ message(STATUS "")
 #    DYLD_PRINT_RPATHS=1 ./bin/myapp
 #    # 查看 rpath 解析过程
 ```
+
+
+> 常见问题
+
+```text
+// ============================================
+// myapp/main.cpp - 业务模块示例
+// ============================================
+
+#include <iostream>
+#include <string>
+
+// JsonCpp 头文件
+#include <json/json.h>
+
+// Protobuf 头文件
+#include <google/protobuf/message.h>
+#include <google/protobuf/util/json_util.h>
+
+// JsonProtobuf 头文件（假设接口）
+#include <jsonprotobuf.h>  // 或者你的实际头文件路径
+
+// 如果有自己定义的 proto 文件
+// #include "myproto.pb.h"
+
+int main(int argc, char* argv[]) {
+    std::cout << "=== MyApp Started ===" << std::endl;
+    
+    // ----------------------------------------
+    // 1. 测试 JsonCpp
+    // ----------------------------------------
+    std::cout << "\n[1] Testing JsonCpp..." << std::endl;
+    
+    Json::Value root;
+    root["name"] = "MyApp";
+    root["version"] = "1.0.0";
+    root["features"] = Json::arrayValue;
+    root["features"].append("json");
+    root["features"].append("protobuf");
+    
+    Json::StreamWriterBuilder writer;
+    std::string json_str = Json::writeString(writer, root);
+    std::cout << "JSON: " << json_str << std::endl;
+    
+    // ----------------------------------------
+    // 2. 测试 Protobuf
+    // ----------------------------------------
+    std::cout << "\n[2] Testing Protobuf..." << std::endl;
+    
+    // 假设你有一个 proto 定义
+    // MyProto::Person person;
+    // person.set_name("Alice");
+    // person.set_age(30);
+    // 
+    // std::string proto_data;
+    // person.SerializeToString(&proto_data);
+    // std::cout << "Protobuf serialized: " << proto_data.size() << " bytes" << std::endl;
+    
+    // 或者只是测试 protobuf 基本功能
+    std::cout << "Protobuf version: " 
+              << GOOGLE_PROTOBUF_VERSION << std::endl;
+    
+    // ----------------------------------------
+    // 3. 测试 JsonProtobuf 库（你的主要功能）
+    // ----------------------------------------
+    std::cout << "\n[3] Testing JsonProtobuf..." << std::endl;
+    
+    // 假设你的 jsonprotobuf 库提供了这样的接口：
+    // JsonProtobuf::Converter converter;
+    // 
+    // // JSON -> Protobuf
+    // std::string json = R"({"name": "Bob", "age": 25})";
+    // auto proto = converter.JsonToProto(json);
+    // 
+    // // Protobuf -> JSON
+    // std::string result_json = converter.ProtoToJson(proto);
+    // std::cout << "Converted: " << result_json << std::endl;
+    
+    // 如果没有具体接口，至少测试能否链接
+    std::cout << "JsonProtobuf library linked successfully!" << std::endl;
+    
+    // ----------------------------------------
+    // 4. 业务逻辑示例
+    // ----------------------------------------
+    std::cout << "\n[4] Running business logic..." << std::endl;
+    
+    // 你的实际业务代码
+    // ...
+    
+    std::cout << "\n=== MyApp Finished ===" << std::endl;
+    return 0;
+}
+
+// ============================================
+// 可能遇到的问题和解决方案
+// ============================================
+
+/*
+问题1: 编译时找不到头文件
+---------------------------------------
+错误信息：
+  fatal error: 'jsonprotobuf.h' file not found
+  
+解决方案：
+  在 CMakeLists.txt 中添加：
+  target_include_directories(myapp PRIVATE
+      ${JSONPROTOBUF_ROOT}/include
+  )
+
+问题2: 链接时找不到符号
+---------------------------------------
+错误信息：
+  Undefined symbols for architecture arm64:
+    "_some_function", referenced from:
+    
+解决方案：
+  确保 target_link_libraries 包含了需要的库：
+  target_link_libraries(myapp PRIVATE
+      jsonprotobuf
+      protobuf
+      jsoncpp
+  )
+
+问题3: 运行时找不到库
+---------------------------------------
+错误信息：
+  dyld: Library not loaded: /path/to/libjsonprotobuf.dylib
+  Reason: image not found
+  
+解决方案A - 开发期：
+  检查 BUILD_RPATH 是否正确：
+  otool -l myapp | grep -A 3 LC_RPATH
+  
+  应该包含 third_party 的路径
+  
+解决方案B - 部署期：
+  1. 确保执行了 make install
+  2. 检查 install/lib/ 下是否有所有库
+  3. 检查路径：
+     otool -L install/bin/myapp
+     应该显示 @executable_path/../lib/...
+
+问题4: jsonprotobuf 找不到它的依赖（protobuf/abseil）
+---------------------------------------
+错误信息：
+  dyld: Library not loaded: /old/path/libprotobuf.dylib
+  Referenced from: .../libjsonprotobuf.dylib
+  
+解决方案：
+  这是因为 install 脚本中的 install_name_tool 没有正确执行
+  
+  手动修复：
+  cd install/lib
+  
+  # 查看 jsonprotobuf 的依赖
+  otool -L libjsonprotobuf.dylib
+  
+  # 手动修复每个依赖
+  install_name_tool -change \
+      /old/path/libprotobuf.dylib \
+      @loader_path/libprotobuf.dylib \
+      libjsonprotobuf.dylib
+
+问题5: 多级依赖问题（protobuf 依赖 abseil）
+---------------------------------------
+错误信息：
+  dyld: Library not loaded: /path/to/libabsl_base.dylib
+  Referenced from: .../libprotobuf.dylib
+  
+解决方案：
+  需要修复 protobuf 对 abseil 的引用
+  
+  cd install/lib
+  
+  # 检查 protobuf 依赖
+  otool -L libprotobuf.dylib
+  
+  # 修复所有 abseil 引用
+  for absl in libabsl_*.dylib; do
+      install_name_tool -change \
+          /old/path/$absl \
+          @loader_path/$absl \
+          libprotobuf.dylib
+  done
+
+问题6: 在其他机器上运行失败
+---------------------------------------
+原因：
+  RPATH 中包含了绝对路径（如 BUILD_RPATH）
+  
+检查：
+  otool -l install/bin/myapp | grep -A 3 LC_RPATH
+  
+  不应该有 /Users/xxx/... 这样的绝对路径
+  
+解决：
+  确保 CMakeLists.txt 中：
+  BUILD_WITH_INSTALL_RPATH FALSE
+  INSTALL_RPATH "@executable_path/../lib"
+
+问题7: 某些 abseil 库找不到
+---------------------------------------
+原因：
+  可能有些 abseil 库在 third_party 中缺失
+  
+诊断：
+  1. 检查 jsonprotobuf 需要哪些 absl:
+     otool -L third_party/jsonprotobuf/lib/libjsonprotobuf.dylib | grep absl
+     
+  2. 检查 protobuf 需要哪些 absl:
+     otool -L third_party/protobuf/lib/libprotobuf.dylib | grep absl
+     
+  3. 确保 third_party/abseil/lib/ 中有所有需要的库
+  
+解决：
+  补充缺失的 abseil 库到 third_party/abseil/lib/
+
+问题8: JsonCpp 的头文件路径问题
+---------------------------------------
+不同版本的 JsonCpp 头文件路径可能不同：
+  
+  版本1: #include <json/json.h>
+  版本2: #include <jsoncpp/json/json.h>
+  
+检查：
+  ls third_party/jsoncpp/include/
+  
+调整代码中的 #include 路径
+*/
+
+// ============================================
+// 调试技巧
+//
+```
