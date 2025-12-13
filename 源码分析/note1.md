@@ -11,3 +11,8 @@ template<typename _CharT, typename _Traits = char_traits<_CharT> >
 
 
 ```
+
+
+std::ios、std::wios
+
+
