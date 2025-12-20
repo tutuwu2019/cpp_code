@@ -14,4 +14,16 @@ ranges::sort(meetings.begin(), meetings.end(),
                 return a[2] < b[2];
             });
 
+
+//c++20 支持模板化this
+operator()<Self&& self, ...)
+
+//引入显示对象参数语法
+（this auto&& self, ...)
+
+//this 参与模板推导
+self(self, x);
+
 ```
+
+> 为什么之前的 Y-combinator 很丑 ? 
