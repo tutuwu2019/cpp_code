@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/demo_mysql.dir/examples/demo_mysql.cpp.o -o demo_mysql  -Wl,-rpath,/usr/lib64/mysql libdb_components.a /usr/lib64/libsqlite3.so /usr/lib64/mysql/libmysqlclient.so -lpthread 

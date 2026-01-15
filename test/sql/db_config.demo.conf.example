@@ -1,0 +1,15 @@
+# Demo config (copy to ./db_config.demo.conf and edit)
+
+type=mysql
+
+mysql.host=127.0.0.1
+mysql.port=3306
+mysql.user=root
+mysql.password=secret
+mysql.database=test
+mysql.maxSize=5
+
+# You can also keep sqlite settings here for convenience.
+sqlite.file=./demo.db
+sqlite.walEnabled=true
+sqlite.synchronousNormal=true

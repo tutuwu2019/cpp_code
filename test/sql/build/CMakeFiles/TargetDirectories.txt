@@ -1,0 +1,5 @@
+/home/tudong/projects/test_/c_cpp_/test/test_260115/build/CMakeFiles/db_components.dir
+/home/tudong/projects/test_/c_cpp_/test/test_260115/build/CMakeFiles/demo_db.dir
+/home/tudong/projects/test_/c_cpp_/test/test_260115/build/CMakeFiles/demo_mysql.dir
+/home/tudong/projects/test_/c_cpp_/test/test_260115/build/CMakeFiles/edit_cache.dir
+/home/tudong/projects/test_/c_cpp_/test/test_260115/build/CMakeFiles/rebuild_cache.dir

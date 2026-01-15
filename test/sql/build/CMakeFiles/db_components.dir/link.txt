@@ -1,0 +1,2 @@
+/usr/bin/ar qc libdb_components.a CMakeFiles/db_components.dir/src/sqlite_connection.cpp.o CMakeFiles/db_components.dir/src/mysql_connection.cpp.o CMakeFiles/db_components.dir/src/mysql_connection_pool.cpp.o CMakeFiles/db_components.dir/src/db_helper.cpp.o CMakeFiles/db_components.dir/src/user_repository.cpp.o CMakeFiles/db_components.dir/src/config_loader.cpp.o
+/usr/bin/ranlib libdb_components.a

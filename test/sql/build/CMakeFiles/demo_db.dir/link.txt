@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/demo_db.dir/examples/demo.cpp.o -o demo_db  -Wl,-rpath,/usr/lib64/mysql libdb_components.a /usr/lib64/libsqlite3.so /usr/lib64/mysql/libmysqlclient.so 
