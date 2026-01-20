@@ -48,6 +48,7 @@ localtime_r(&now_tm, &now_c);
 这些 api 操作的是进程级别的全局资源
 
 |  函数名 | 不安全原因 |
+|:--:|:--:|
 | std::getent | 返回指向环境列表的指针，若其他线程修改环境则失效|
 |std::putenv/ setenv | 修改全局环境列表 |
 | std::signal | 设置全局信号量处理函数 |
