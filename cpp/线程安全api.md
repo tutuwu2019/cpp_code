@@ -27,4 +27,8 @@ localtime_r(&now_tm, &now_c);
 
 字符串与格式化类
 
-
+| 线程不安全 api | 线程安全 替代方案 |
+|:--:|:--:|
+| strtok (使用静态全局指针记录分割位置，多线程同时分割字符串会发生崩溃)| strtok_r(linx)/strtok_s(win) |
+|strerror (获取错误码描述，不安全版本返回静态指针)| strrerror_r |
+|sprintf(虽然 sprintf 本身不涉及静态缓冲区，但它不检查长度，容易导致缓冲区溢出，间接影响线程安全)|snprintf|
