@@ -48,5 +48,5 @@ src/rax.h
 9. 流
 src/stream.h
 
-- 地图索引
+10. 地图索引
 src/geo.h
