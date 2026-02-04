@@ -126,5 +126,6 @@
 
 ## 参考文档
 
-[内存排序](https://colobu.com/atomics/3_Memory_Ordering.html)   
+[wiki: 内存排序](https://zh.wikipedia.org/zh-cn/%E5%86%85%E5%AD%98%E6%8E%92%E5%BA%8F)
+[博客:内存排序](https://colobu.com/atomics/3_Memory_Ordering.html)   
 [指令重排序与内存屏障](https://zhuanlan.zhihu.com/p/359093580)
