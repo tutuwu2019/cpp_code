@@ -123,3 +123,7 @@
 最终计数: 3200000000 (正确性: OK)
 ```
 
+
+## 参考文档
+
+[内存排序](https://colobu.com/atomics/3_Memory_Ordering.html)
