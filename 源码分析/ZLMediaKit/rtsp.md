@@ -46,6 +46,4 @@ sequenceDiagram
     Server->>Media: onWrite(RTP) 写入
     Media-->>Media: 解封装/生成Track/多协议复用
     end
-
-
-    ```
+```
