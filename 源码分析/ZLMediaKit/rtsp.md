@@ -1,7 +1,7 @@
 # rtsp
 
 
-ZLMediaKit 中的rtsp 流程，包括：服务器启动、推流、拉流、转换与分发
+## ZLMediaKit 中的rtsp 流程，包括：服务器启动、推流、拉流、转换与分发
 
 ```text
 ## 1. 服务器启动
@@ -60,6 +60,8 @@ src/Rtsp/RtspSession.h/.cpp
 ```
 
 
+## 流程图
+
 ```mermaid
 
 sequenceDiagram
@@ -106,3 +108,36 @@ sequenceDiagram
     Media-->>Media: 解封装/生成Track/多协议复用
     end
 ```
+
+## 总结
+
+###结构
+    1. RTSP 客户端(负责与RTSP交互)
+        src/Rtsp/RtspPlayer.h/.cpp
+        继承 TcpClinet、RtspSplitter、RtpReceiver
+    2. RTP 接收与排序
+        src/Rtp/RepReceiver.h/.cpp
+        RTP 序号排序、丢包处理、时间戳处理
+    3. SDP解析与Track 建立
+        src/Rtsp/RtspDemuxer.h/.cpp
+        解析 SDP、构建音视频 Track
+        src/Rtsp/Sdp.cpp 
+    4. 媒体源接入(拉流+内部媒体源)
+        src/Rtsp/RtspMediaSource.h/.cpp
+        src/Rtsp/RtspMediaSourceImp.h/.cpp
+        把RTP 数据写入 MediaSource
+        触发多协议转换(RTMP/HLS等)
+    5. 协议转换/输出
+        src/Common/MultiMediaSourceMuxer.*
+        将拉到的 RTSP 流变成 HLS/FLVR/RTMP等
+
+### 开发问题
+    1. RTP 乱序与丢包
+        - UDP 传输容易乱序、丢包
+        - 需要排序缓存、重传或容错策略
+        - ZLMediaKit 中由RtpReceiver 处理
+    2. NAT/防火墙问题
+    3. SDP 不规范
+    4. RTP 时间戳/同步问题
+    5. 认证/鉴权
+    6. 切换码流/断线重连
