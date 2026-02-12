@@ -30,9 +30,32 @@ RtspSession 举例：
 设计思想：控制面(RTSP) 和数据面(RTP) 解耦，但在同一个 session 内协同
 
 
-3. 资源绑定: session 绑定 MediaSOurce
+3. 资源绑定: session 绑定 MediaSource
 
 RtspSession 会把连接和媒体资源“绑定起来"
   - 推流时: 创建 RtspMediaSourceImp -> _push_src
   - 拉流时: 绑定 RtspMediaSOurce -> _play_src、_play_reader
-  - MediaSOurceEvent 让 session 可以收到媒体事件(
+  - MediaSOurceEvent 让 session 可以收到媒体事件(关闭你/人数统计等)
+
+好处：
+  - session 生命周期 = 连接声明周期
+  - 媒体源生命周期可独立延迟回收(_continue_push_ms)
+
+
+4. 状态驱动 + 超时管理
+
+RtspSession 用 _alive_ticker + _sessionid 控制状态
+
+  - onManager() 周期检测：握手超时/推流超市/播放超时
+  - _rtp_type 记录传输方式(UDP/TCP/HTTP)
+
+session 自带“状态机”，不依赖外部调度
+
+5. 高可用: 统一的 session 基类
+session 只负责通用能力：
+  - 连接读写
+  - attachServer
+  - 基础统计
+
+结论
+ZLMediaKit 的 session 设计核心是"一个连接 = 一个协议组合对象"，通过继承吧协议栈拼装起来，并将媒体资源绑定到连接生命周期中。
