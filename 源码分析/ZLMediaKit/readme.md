@@ -100,3 +100,14 @@ MediaSource::unregist() → emitEvent(false)
                     └─ 切回播放器所在线程 → findAsync_l() 再找一次 → 回复播放器 ✅
 
 ```
+
+---
+
+
+```text
+
+using onReadCB = std::function<void(Buffer::Ptr &buf, struct sockaddr *addr, int addr_len)>;
+
+
+
+```
