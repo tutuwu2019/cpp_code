@@ -57,6 +57,21 @@
 
 ## 事件机制
 
+emitEvent
+```cpp
+// src/Common/MediaSource.cpp:495
+void MediaSource::emitEvent(bool regist) {
+    // 1. 通知局部 listener（如 MultiMediaSourceMuxer）
+    auto listener = _listener.lock();
+    if (listener) {
+        listener->onRegist(*this, regist);
+    }
+    // 2. 全局广播到 NoticeCenter 总线
+    NOTICE_EMIT(BroadcastMediaChangedArgs, Broadcast::kBroadcastMediaChanged, regist, *this);
+    InfoL << (regist ? "媒体注册:" : "媒体注销:") << getUrl();
+}
+```
+<img width="826" height="226" alt="image" src="https://github.com/user-attachments/assets/7c6409ab-4e1b-4e8d-a2b9-09a72ce5b25e" />
 
 ```text
 MediaSource::regist()   → emitEvent(true)
@@ -70,4 +85,18 @@ MediaSource::unregist() → emitEvent(false)
          └─ ② NOTICE_EMIT(kBroadcastMediaChanged, regist, sender)
                  └── NoticeCenter（全局发布/订阅总线）
                      将事件广播给所有订阅者
+
+## 关键场景---播放器等流
+播放器请求 rtsp://127.0.0.1/live/stream（流不存在）
+    │
+    ├─ findAsync_l() 找不到流
+    ├─ addListener(kBroadcastMediaChanged, on_register)  ← 挂起等待
+    └─ NOTICE_EMIT(kBroadcastNotFoundStream, ...)        ← 触发按需拉流
+
+推流端推流进来
+    │
+    └─ MediaSource::regist() → emitEvent(true)
+            └─ NoticeCenter 广播 → on_register 被唤醒
+                    └─ 切回播放器所在线程 → findAsync_l() 再找一次 → 回复播放器 ✅
+
 ```
