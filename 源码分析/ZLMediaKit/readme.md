@@ -53,3 +53,21 @@
     }
 
 ```
+
+
+## 事件机制
+
+
+```text
+MediaSource::regist()   → emitEvent(true)
+MediaSource::unregist() → emitEvent(false)
+         │
+         ├─ ① listener->onRegist(*this, regist)
+         │       └── _listener 是 weak_ptr<MediaSourceEvent>
+         │           → 例如 MultiMediaSourceMuxer（HLS/RTMP/TS 转封装器）
+         │               收到注册通知后，关联或释放复用资源
+         │
+         └─ ② NOTICE_EMIT(kBroadcastMediaChanged, regist, sender)
+                 └── NoticeCenter（全局发布/订阅总线）
+                     将事件广播给所有订阅者
+```
