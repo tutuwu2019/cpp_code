@@ -156,6 +156,27 @@ _content_len == 0  →  "请求头模式"（Header Mode）
 
 ```
 
+```text
+网络层          TcpServer/Socket       WebRtcSession          HttpRequestSplitter      WebRtcTransport
+  │                    │                    │                         │                      │
+  │──epoll 事件───────→│                    │                         │                      │
+  │              setOnRead cb              │                         │                      │
+  │                    │──onRecv(buf)──────→│                         │                      │
+  │                    │               [_over_tcp?]                   │                      │
+  │                    │           yes │          no                  │                      │
+  │                    │               │──input()──→│                 │                      │
+  │                    │               │            │─onSearchPacketTail()                   │
+  │                    │               │            │  找2字节帧边界   │                      │
+  │                    │               │            │─onRecvHeader()──→│                     │
+  │                    │               │            │                 │                      │
+  │                    │               │←─────────────────────────── │                      │
+  │                    │               │onRecv_l(payload)            │                      │
+  │                    │               │[同线程? 直接调用 : 迁移线程]  │                      │
+  │                    │               │──────────────────────────────────inputSockData()──→│
+  │                    │               │                             │                      │
+
+```
+
 ---
 
 
