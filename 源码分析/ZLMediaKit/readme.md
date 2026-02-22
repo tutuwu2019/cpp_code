@@ -99,6 +99,61 @@ MediaSource::unregist() → emitEvent(false)
             └─ NoticeCenter 广播 → on_register 被唤醒
                     └─ 切回播放器所在线程 → findAsync_l() 再找一次 → 回复播放器 ✅
 
+
+onRecv_L
+
+toolkit::Session         HttpRequestSplitter
+      │                          │
+      └──────── WebRtcSession ───┘
+                     │
+                 onRecv()          onRecvHeader()
+                 (override)        (override)
+                     │                  ↑
+                     └──→ onRecv_l() ───┘ (被 Splitter 回调)
+
+
+
+### udp 模式（直接模式）
+[内核 epoll/kqueue]
+    └─ Socket::setOnRead() 回调触发
+        └─ Session::onRecv(Buffer::Ptr)          ← ZLToolKit 框架调用
+            └─ WebRtcSession::onRecv()
+                if (!_over_tcp):
+                    └─ onRecv_l(data, len)        ← 直接进入业务逻辑
+                        ├─ getUserName() → 找 WebRtcTransport
+                        ├─ 如果 transport 在别的线程 → cloneSocket + async → 新 WebRtcSession
+                        └─ _transport->inputSockData(data, len, self)
+
+
+### tcp 模式（经过 Splitter 的间接路径）
+[内核 epoll/kqueue]
+    └─ Socket::setOnRead() 回调触发
+        └─ Session::onRecv(Buffer::Ptr)          ← ZLToolKit 框架调用
+            └─ WebRtcSession::onRecv()
+                if (_over_tcp):
+                    └─ HttpRequestSplitter::input(data, len)   ← 进入拆包状态机
+                        │
+                        │  【while 循环】
+                        ├─ onSearchPacketTail(ptr, len)        ← WebRtcSession 实现
+                        │       读前2字节大端 uint16 = length
+                        │       检查剩余数据 >= length+2
+                        │       返回 ptr + 2 + length （包尾指针）
+                        │
+                        │  找到完整帧 → 触发:
+                        └─ onRecvHeader(header_ptr, header_size)  ← WebRtcSession 实现
+                                剥掉2字节长度头:
+                                onRecv_l(data + 2, len - 2)   ← 进入业务逻辑（同上）
+                                return 0  ← 告诉 Splitter "后面还是 header 模式"
+
+HttpRequestSplitter::input() 状态机解析
+_content_len == 0  →  "请求头模式"（Header Mode）
+                       循环调用 onSearchPacketTail() 定位包尾
+                       找到包尾 → 调用 onRecvHeader()
+                       onRecvHeader 返回值含义：
+                         == 0  → 继续 Header 模式（WebRtcSession 就返回 0）
+                         > 0   → 切换到固定长度 Content 模式，等 N 字节后调 onRecvContent()
+                         < 0   → Content 模式，后续所有数据全部分段 onRecvContent()
+
 ```
 
 ---
