@@ -202,3 +202,83 @@ using onReadCB = std::function<void(Buffer::Ptr &buf, struct sockaddr *addr, int
 这个问题的本质是：为什么 ZLMediaKit 不自己写 socket，而要依赖 ZLToolKit 这个子模块？
 
 答案是一句话：ZLToolKit 提供了一套「fd + 所属 EventPoller + 线程安全」三位一体的 Socket 抽象，这套抽象是 ZLM 多协议、多线程架构的根基，自己从头造的成本远超收益。
+
+1. SockNum / SockFD 的分层设计：fd 生命周期与 epoll 生命周期解耦
+```text
+ int rawFd()         →  SockNum（只管 fd 的 close）
+      +
+  EventPoller::Ptr    →  SockFD（负责 poller->delEvent(fd)）
+      │
+      └─ 析构顺序保证：先 delEvent，再 close(fd)
+         防止 close 后 fd 号被复用，epoll 监听到错误连接的数据
+```
+2. cloneSocket：WebRTC 线程迁移的核心能力
+```text
+WebRtcSession 里这段代码直接依赖它：
+// 新 Socket，绑定到 transport 所在的 poller 线程
+auto sock = Socket::createSocket(transport->getPoller(), false);
+// 复制 fd（不 close），切换 epoll 监听归属
+auto on_complete = sock->cloneSocket(*(getSock()));
+
+cloneSocket 的实现是：
+
+从旧 Socket 拿出 SockNum（共享同一个 rawFd，不 close）
+在新 poller 线程上 attachEvent（把 fd 重新加入新线程的 epoll）
+返回一个 shared_ptr<void> 作为 RAII guard —— 析构时才真正开始监听，保证新 Session 创建完毕后再收包
+这是一个精妙的「fd 所有权转移」原语，自己实现需要深刻理解 epoll 的 ET/LT 触发模型以及跨线程 fd 迁移的时序问题，代价极高。
+
+```
+
+3. EventPoller 绑定模型：每条连接固定在一条线程
+```text
+
+Socket ──── EventPoller（一个线程一个 epoll 实例）
+               │
+               ├─ addEvent(fd, Event_Read, cb)
+               ├─ async(task)          // 跨线程投递任务
+               └─ isCurrentThread()   // 判断是否已在本线程
+```
+
+ZLM 所有 Session（RtspSession、WebRtcSession、HttpSession…）都遵守同一个契约：Session 的读/写回调只在其绑定的 EventPoller 线程上执行，因此 Session 内部数据结构无需加锁。这是整个服务器高性能的基础。如果自己实现这套 poller-per-thread 模型，相当于重写 libuv/libevent 的核心。
+
+4. 统一的发送缓冲区（两级缓冲 + 背压）
+
+flushData() 里实现了：
+
+一级缓冲 _send_buf_waiting：业务线程写入
+二级缓冲 _send_buf_sending：poller 线程消费，走 writev/send
+背压：send 返回 EAGAIN → startWriteAbleEvent → 监听 Event_Write → 等可写再继续
+发送速率统计：_send_speed
+ZLM 所有协议（RTSP/RTMP/HLS/WebRTC）的发送都走这一套，不需要每个协议各自实现，保证了行为一致性和内存安全。
+
+5. UDP bindPeerAddr 软/硬绑定：WebRTC 连接迁移支持
+```text
+// 软绑定：只记录目标地址，不调用内核 connect()
+_udp_send_dst = std::make_shared<struct sockaddr_storage>();
+memcpy(_udp_send_dst.get(), dst_addr, addr_len);
+```
+WebRTC 的 ICE 连接迁移（客户端切换网络时源地址变更）需要 UDP socket 在不重建 fd 的前提下改变发送目标。软绑定就是这个能力的基础设施，ZLM 直接复用，零实现代价。
+
+6. 跨平台抹平：epoll / kqueue / IOCP
+```text
+// Socket.cpp 的 accept 失败处理里：
+#if (defined(HAS_EPOLL) && !defined(_WIN32)) || defined(HAS_KQUEUE)
+    // 边缘触发：需要手动 100ms 后重试
+    _poller->doDelayTask(100, [weak_self, sock]() { ... });
+#else
+    // 水平触发：sleep 10ms
+    this_thread::sleep_for(std::chrono::milliseconds(10));
+#endif
+```
+
+ZLToolKit 把 Linux epoll ET、macOS kqueue、Windows IOCP 的差异全部封装在 EventPoller 内部，ZLM 所有业务代码对此无感知。ZLM 要同时支持 Linux/macOS/Windows/Android/iOS，这个平台抽象价值巨大。
+
+总结
+| 能力	| 如果 ZLM 自己造 | 
+| fd 生命周期管理	| 极易出现 close 后 fd 复用、epoll 残留事件 bug | 
+| 线程迁移（cloneSocket）	| 需要深入理解 ET 触发时序，实现难度极高 | 
+| 两级发送缓冲+背压	| 每个协议重复实现，代码量巨大且行为不一致 | 
+| epoll/kqueue/IOCP 抽象	| 相当于重写 libuv，不现实 | 
+| poller-per-thread 模型	| Session 内部需要大量加锁，性能倒退 | 
+
+
