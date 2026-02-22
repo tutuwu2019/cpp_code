@@ -177,6 +177,14 @@ _content_len == 0  →  "请求头模式"（Header Mode）
 
 ```
 
+| 问题	| 设计决策 | 
+|:---: | :---:|
+|为什么 UDP 不用 Splitter？	| UDP 本身是数据报，每次 recvfrom 就是完整一帧，无需拆包 | 
+| 为什么 TCP 要用 Splitter？	| TCP 是字节流，需要"2字节长度前缀"定界，Splitter 封装了这个拆包状态机 | 
+| onRecvHeader 为何返回 0？	| WebRTC 帧是定长前缀协议，不需要 Content 模式，每帧即是一个独立"header" | 
+| _find_transport 只允许一次？	| 第一帧 STUN BindingRequest 才含 username，一旦找到 transport 就绑定，后续帧无需再查找 | 
+| 线程迁移为何用 throw？	| 抛异常是销毁旧 Session 的最简洁方式：沿调用栈展开，让 shared_ptr 析构接管清理 | 
+
 ---
 
 
