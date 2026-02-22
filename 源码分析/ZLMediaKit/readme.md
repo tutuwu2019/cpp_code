@@ -275,6 +275,7 @@ ZLToolKit 把 Linux epoll ET、macOS kqueue、Windows IOCP 的差异全部封装
 
 总结
 | 能力	| 如果 ZLM 自己造 | 
+|:--: | :--: |
 | fd 生命周期管理	| 极易出现 close 后 fd 复用、epoll 残留事件 bug | 
 | 线程迁移（cloneSocket）	| 需要深入理解 ET 触发时序，实现难度极高 | 
 | 两级发送缓冲+背压	| 每个协议重复实现，代码量巨大且行为不一致 | 
