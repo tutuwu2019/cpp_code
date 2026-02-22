@@ -283,3 +283,13 @@ ZLToolKit 把 Linux epoll ET、macOS kqueue、Windows IOCP 的差异全部封装
 | poller-per-thread 模型	| Session 内部需要大量加锁，性能倒退 | 
 
 
+### 偶合
+
+webrtc、session、poller以及应用协议层(包括ICE、DTLS、SRTP)
+
+
+- ZLM中的每个poller 代表一个事件循环线程，处理网络IO和定时器
+- webRtcTransport 是一个处理webRTC 传输层的对象 (包括ICE、DTLS、SRTP)，它与某个poller 绑定，其所有的操作都应该在poller线程中执行，以避免锁竞争和线程安全问题
+- webRtcSession 代表一个webrtc 会话，它管理 socket，并持有 webRtcTransport 指针.
+
+
