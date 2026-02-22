@@ -195,3 +195,10 @@ using onReadCB = std::function<void(Buffer::Ptr &buf, struct sockaddr *addr, int
 
 
 ```
+
+
+
+为什么 ZLM 要复用 Socket 底层源码模块？
+这个问题的本质是：为什么 ZLMediaKit 不自己写 socket，而要依赖 ZLToolKit 这个子模块？
+
+答案是一句话：ZLToolKit 提供了一套「fd + 所属 EventPoller + 线程安全」三位一体的 Socket 抽象，这套抽象是 ZLM 多协议、多线程架构的根基，自己从头造的成本远超收益。
