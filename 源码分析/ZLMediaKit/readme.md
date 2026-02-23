@@ -289,7 +289,38 @@ webrtc、session、poller以及应用协议层(包括ICE、DTLS、SRTP)
 
 
 - ZLM中的每个poller 代表一个事件循环线程，处理网络IO和定时器
-- webRtcTransport 是一个处理webRTC 传输层的对象 (包括ICE、DTLS、SRTP)，它与某个poller 绑定，其所有的操作都应该在poller线程中执行，以避免锁竞争和线程安全问题
-- webRtcSession 代表一个webrtc 会话，它管理 socket，并持有 webRtcTransport 指针.
+- webRtcTransport 是一个处理webRTC 传输层的对象 (包括ICE协商、DTLS握手、SRTP加密、数据收发)，它与某个poller 绑定，其所有的操作都应该在poller线程中执行，以避免锁竞争和线程安全问题
+- webRtcSession 代表一个webrtc 会话，它管理 socket，并持有 webRtcTransport 指针
+- 为什么需要切换线程判断？因为当第一个数据包到达时，webRtcSession 可能位于监听线程(如主线程或接收连接的线程),而对应的webRtcTransport 可能位于另一个工作线程(根据负载分配或其他策略)。如果直接在当前线程处理数据，会违反线程关联性，可能导致数据竞争、锁竞争、活着某些非线程安全的操作。所以需要将后续处理切换到webrtcTracsport 所在的线程
+- 切换过程：通过克隆 socket 到目标线程，并在目标线程创建新的webRtcSession，重新处理数据，然后销毁原对象，确保所有后续操作都在正确线程执行
+- 这种设计充分利用多核CPU,同时保持单线程编程的简洁性，避免复杂的锁
 
+> poller 是事件驱动的核心抽象，每个poller 对象运行在一个独立的线程中，负责管理该线程上的所有套接字的IO 事件和定时器任务。webRtcTracsport 和 webRtcSession 都与特定的Poller 线程绑定，他们的成员函数只能绑定线程上使用，否则可能导致数据竞争和为定义行为。这种单线程绑定的设计简化了并发控制，避免使用锁，提高了性能
 
+线程匹配
+1. 对象线程关联性
+   - webRtcTransport 在创建时被分配到一个poller 线程，该线程负责处理它的所有逻辑
+   - webRtcTransport 同样绑定到一个poller 线程，它负责底层 socket 事件监听和数据接收
+   - 这两个对象可能不在同一个线程(例如：webRtcTransport 可能根据负载均衡被分配到某个工作线程，而初始的tcp 连接可能由监听线程接收)
+  
+2. 数据处理的线程安全性
+   - 如果webRtcSession 在接收数据后直接调用 webRtcTransport 的方法，而后者位于另一个线程，就会发生垮线程调用，而破坏线程关联性
+   - 这可能导致 webRtcSport 内部状态被并发修改(例如同时处理网络数据和超时定时器)，引发崩溃或数据损坏
+   - 虽然可以用锁保护，但多线程加锁会降低性能并增加复杂性，ZLM 更倾向于无锁设计，每个对象都只在一个线程上操作
+  
+3. 性能考量
+   - 将webRtcTransport 独立到一个线程，可以让多个会话在不同的CPU核心上并行处理，提高吞吐量
+   - 数据从socket 读入后，立即切换到目标 poller 线程，后续所有协议栈处理都在同一线程完成，避免了线程切换和锁开销
+
+线程切换判断的时机与作用
+
+在webRtcSession::onRecv_l 中，当第一次收到数据(_find_transport == true)时，需要根据数据中用户名找到对应的 webRtcTransport。此时必须检查 transport->getPoller()->isCurrentThread():
+   - 如果相同：直接绑定 _transport，后续数据在当前线程处理即可  
+   - 如果不相同：说明 webRtcSession 和 webRtcTransport 不在同一线程，不能直接在当前线程使用 transport 
+   此时需要通过一下步骤切换：
+      1. 克隆当前 socket 到目标 poller (使用 cloneSocket, fd 不变但事件监听由新线程负责)
+      2. 在目标线程异步创建一个新的webRtcSession，将克隆的 socket 交给它
+      3. 在新 session 中重新调用 onRecv_l，处理同一份数据，从而将整个会话迁移到正确的线程
+      4. 通过抛弃异常销毁原 webRtcSession 和旧 socket，完成线程切换
+    
+> 这样保证了所有后续数据都在 webRtcTransport 所在的线程处理，维持了单线程的简洁性，并充分利用多核能力
