@@ -324,3 +324,54 @@ webrtc、session、poller以及应用协议层(包括ICE、DTLS、SRTP)
       4. 通过抛弃异常销毁原 webRtcSession 和旧 socket，完成线程切换
     
 > 这样保证了所有后续数据都在 webRtcTransport 所在的线程处理，维持了单线程的简洁性，并充分利用多核能力
+
+
+详细解释 webRtcTransport 在整个生命周期中如何与 poller 线程保持强绑定，包括创建、运行、销毁等阶段，以及如何保证线程一致性。
+
+思考：
+   1. webRtcTransport 的创建：它是在哪个线程创建的？如何绑定到特定的 poller ?
+   2. 运行期间：所有操作如何保证在绑定的 poller 线程上执行？比如数据接收、定时器、ICE、DTLS等
+   3. 垮线程操作的处理：如何外部需要调用 webRtcTransport 的方法，如何确保线程安全？
+   4. 销毁过程：如何安全地销毁，避免线程问题。
+
+
+1. 创建阶段：绑定线程
+   webRtcTransport 的创建通常由某个工作线程(poller线程) 完成，例如在收到 ICE绑定请求后，通过 webRtcTransportManager 创建或获取
+   - 创建位置：
+      创建 webRtcTransport 的代码一定在目标 poller 线程上执行(例如通过 async 投递任务到该线程)。在ZLM 中，webRtcTransport 的构造函数会会接收一个 EvnetPoller::Ptr 参数，该参数指定它所属的 poller
+   - 绑定方式：
+      1. webRtcTransport 内部保存 _poller 成员(通常为 EvnetPoller::Ptr)
+      2. 其所有的定时器、网络发送等操作都通过该 _poller 对象来执行，确保这些操作最终在绑定的线程上被处理
+      3. 例如，_poller->doDelayTask 添加的定时器回调会在该先测好难过执行
+    
+2. 运行阶段：线程内执行
+   在运行期间，webRtcTransport 的所有业务逻辑(如STUN 消息处理、DTLS握手、SRTP加解密、数据发送等)都必须在绑定的线程上执行。
+   - 如何保证线程内执行？
+        1. 所有公开成员函数(除少数特意设计的线程安全函数外)都假设在绑定线程调用。如果外部代码需要在其它线程访问webRtcTransport，必须通过 _poller->async 将任务投递到绑定线程执行。
+   
+      ```cpp
+      transport->getPoller()->async([transport](){
+         transport->someMethod();   // 现在在正确的线程执行
+      });
+      ```
+        2. 数据接收：webRtcTransport 本身不直接接收网络数据，而是由 webRtcSession 收到数据后调用 inputSockData。而 webRtcSession 经过线程切换后，已经与webRtcTransport 处于同一线程(如之前的分析)，因此 inputSocketData 的调用自然就在绑定线程上。
+        3. 定时器与超时管理：webRtcTransport 内部使用 _poller->doDelayTask 管理ICE超时、DTLS超时等。这些定时器回调会直接在该线程上触发，无需额外同步。
+        4. 数据发送：当需要发送数据时(如STUN 响应、RTP包)，webRtcTransport 通过 _poller 获取对应的 socket 对象(可能属于其它对象，但也是同一线程的),直接写入，无需加锁。
+
+> 这种设计使得 webRtcTransport 内部可以完全无锁地操作自身状态，充分利用单线程的剧不行，提升缓存命中率，减少上下文切换。
+
+3. 销毁阶段：线程内清理
+webRtcTransport 的销毁也必须在其绑定线程上进行，以避免资源释放时的竞争。
+
+   - 触发销毁：通常由外部事件触发(如超时、客户端关闭、管理者移除等)。销毁请求可能来自其他线程(例如管理线程)，此时需要将销毁任务投递到绑定线程:
+
+   ```cpp
+   transport->getPoller()->async([transport](){
+      transport.reset();   // 在绑定线程释放对象
+   });
+   ```
+   - 析构函数：执行时位于绑定线程，可以安全地释放所有资源(如定时器、加解密上下文、文件描述符等),因为这些资源从未被其他线程使用。
+   - 引用计数: webRtcTransport 通常由 shared_ptr 管理，其最后一个引用可能在任意线程释放。但ZLM 通过确保所有跨线程引用都通过 async 传递，使得最后释放的时机也落在绑定线程上(因为持有所有的引用会在绑定线程执行并释放
+    
+
+
