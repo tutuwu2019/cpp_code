@@ -36,31 +36,39 @@
 1.4 toolkit::TcpServer & toolkit::TcpClient
   - TcpServer：监听端口，接受连接。当有新连接时，创建对应的 Session 对象，并将该 Session 绑定到某个 EventPoller 线程上。
   - TcpClient：发起主动连接，连接成功后绑定 Session。
-2. 关键机制详解
+2. 关键机制详解  
+
 2.1 线程模型与任务投递
+    
 ZLMediaKit 启动时会创建多个 EventPoller 线程（通常等于 CPU 核心数）。
   - 连接分配：TcpServer 收到新连接后，通过轮询算法将新的 Session 分配给负载最低的 EventPoller 线程。
   - 线程切换：如果业务逻辑需要在特定线程执行（例如访问非线程安全的资源），可以使用 poller->async([...](){ ... }) 将任务投递到目标线程执行。
+
 2.2 缓冲区管理 (Buffer Management)
 为了减少内存拷贝，ZLMediaKit 设计了 Buffer 类体系。
   - Buffer::Ptr：智能指针管理的缓冲区。
   - BufferRaw：原始内存块。
   - BufferLikeString：类似 std::string 的缓冲区。
   - 零拷贝优化：在数据转发场景（如 RTSP 转发），数据从输入 Socket 读取后，直接封装成 Buffer 对象，添加到输出 Socket 的发送队列中，避免了用户态的内存拷贝。
+
 2.3 发送合并与异步发送
   - 异步发送：调用 socket->send() 不会阻塞。如果底层发送缓冲区满了，数据会被放入 Socket 内部的链表队列中。
   - Nagle 算法：默认关闭 (TCP_NODELAY)，以保证流媒体的低延迟。
   - 合并发送：在短时间内多次调用 send，Socket 可能会尝试将小包合并，减少系统调用次数（取决于具体配置和实现）。
+
 2.4 定时器与超时处理
 网络编程中处理超时（如连接超时、心跳超时）非常麻烦。ZLMediaKit 在 EventPoller 中集成了定时器轮。
   - 实现：使用时间轮（Timing Wheel）或 最小堆 管理定时器。
   - 心跳：Session 类内置了心跳机制。如果在规定时间内没有收到数据，onManagerTimer 会检测到并触发 onError 关闭连接，防止半开连接占用资源。
+
 2.5 对象生命周期管理
 这是 C++ 网络编程最容易出错的地方。ZLMediaKit 使用 引用计数 解决：
   - Socket 对象被 EventPoller、Session、发送队列等多处持有 shared_ptr。
   - 只有当所有引用都释放（例如连接断开且发送队列清空），对象才会析构。
   - 防止循环引用：Session 持有 Socket 的 shared_ptr，但 Socket 内部的回调通常使用 weak_ptr 捕获 Session，或者在 Socket 关闭时主动断开对 Session 的引用。
+
 3. 数据收发流程
+
 3.1 接收流程 (Read Path)
   1. EventPoller 监听到 FD 可读。
   2. 调用 Socket::onReadEvent。
@@ -68,6 +76,7 @@ ZLMediaKit 启动时会创建多个 EventPoller 线程（通常等于 CPU 核心
   4. 将收到的数据封装为 Buffer::Ptr。
   5. 调用 Session::onRecv(buf)。
   6. 用户在 onRecv 中解析协议，如果解析出一个完整包，处理业务；否则缓存等待后续数据（处理粘包）。
+
 3.2 发送流程 (Write Path)
   1. 业务调用 Session::send(buf)。
   2. 内部调用 Socket::send(buf)。
