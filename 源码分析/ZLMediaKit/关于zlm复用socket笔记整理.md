@@ -153,3 +153,24 @@ libevent 有 evtimer_*，但：
 | cloneSocket	| 无（跨线程迁移 fd 需自己实现）	| 内置，WebRtcSession 线程迁移直接调用 | 
 | 依赖体积	| libevent 本身不大，但拉入后还要解决 OpenSSL 集成、Windows 兼容等问题	| ZLToolKit 与 ZLM 同一作者，零配置| 
 | GOP 缓存	| 无	| _RingStorage 内置 GOP 级别的缓存管理（IDR 帧分组、LRU 淘汰）| 
+
+
+总结：libevent 解决的是「如何高效监听 fd 事件」，而ZLToolKit 在此基础上还解决了：
+```text
+EventPoller = epoll/kqueue 封装
+    + one-loop-per-thread 线程绑定
+    + 跨线程任务投递
+    + 线程本地业务存储（AnyStorage）
+    + 共享读缓冲区
+
+RingBuffer = 媒体帧的无锁多播
+    + GOP 关键帧缓存
+    + per-poller Dispatcher（新订阅者自动回放）
+    + 订阅者跨线程安全析构
+```
+后者是流媒体服务器的业务核心，不是任何通用网络库会提供的，自然也不是libevent 能替代的
+
+
+
+
+
