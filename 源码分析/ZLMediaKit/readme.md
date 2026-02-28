@@ -186,6 +186,35 @@ _content_len == 0  →  "请求头模式"（Header Mode）
 | _find_transport 只允许一次？	| 第一帧 STUN BindingRequest 才含 username，一旦找到 transport 就绑定，后续帧无需再查找 | 
 | 线程迁移为何用 throw？	| 抛异常是销毁旧 Session 的最简洁方式：沿调用栈展开，让 shared_ptr 析构接管清理 | 
 
+
+
+数据拆分
+
+```cpp
+void RtspSession::onRecv(const Buffer::Ptr &buf) {
+    _alive_ticker.resetTime();
+    _bytes_usage += buf->size();
+    if (_on_recv) {
+        //http poster的请求数据转发给http getter处理
+        _on_recv(buf);
+    } else {
+        input(buf->data(), buf->size());
+    }
+}
+```
+
+默认路径:普通 RTSP TCP 会话  
+这里的input（buf->data(), buf0size9)) 来自 RtspSplitter/HttpRequestSplitter  
+(这也是标准的 RTSP  控制连接流程)
+会做这些事情：  
+- 拼包/拆包
+- 触发 onWholeRtspPacket
+- 根据方法发到 OPTIONS/DESCTRIBE/SETUP/PLAY ...
+
+特殊路径: RTSP over HTTP 隧道转发  
+当 _on_recv 被设置后，这个 session 不再自己解析包，而是把收到的数据交给 _on_recv 回调处理
+
+ 
 ---
 
 
