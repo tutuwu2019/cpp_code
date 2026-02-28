@@ -192,8 +192,8 @@ _content_len == 0  →  "请求头模式"（Header Mode）
 
 ```cpp
 void RtspSession::onRecv(const Buffer::Ptr &buf) {
-    _alive_ticker.resetTime();
-    _bytes_usage += buf->size();
+    _alive_ticker.resetTime();      // 任何收到的数据都算"会话仍活跃"
+    _bytes_usage += buf->size();    // 统一流量统计(后续 onError 会触发流量上报)
     if (_on_recv) {
         //http poster的请求数据转发给http getter处理
         _on_recv(buf);
@@ -214,7 +214,119 @@ void RtspSession::onRecv(const Buffer::Ptr &buf) {
 特殊路径: RTSP over HTTP 隧道转发  
 当 _on_recv 被设置后，这个 session 不再自己解析包，而是把收到的数据交给 _on_recv 回调处理
 
- 
+- post 连接(poster) 找到对应GET 连接(getter)
+- 然后
+```cpp
+
+_on_recv = [this, httpGetterWeak](const BUffer::Ptr &buf){
+   ...
+   httpGetterStrong->async([...]{
+      httpGetterStrong->onRecv(         // 保证 httpGetterStrong->onRecv(...) 在 getter 所属的 poller 线程里执行，避免跨线程直接调用 session 逻辑
+         make_shared<BufferString>(decodeBase64(...))
+         );
+   });
+};
+```
+
+含义：
+1. poster 收到 http body (里面是base64 的RTSP请求)
+2. 解码后转发给getter 对应的 RtspSession::onRecv
+3. getter 那边再走正常input(...) 解析 RTSP 信令
+
+> RTSP over HTTP 需要两条连接：  
+> - GET: 收到RTSP 响应 + RTP
+> - POST: 发RTSP 请求(伪装在 HTTP content 里)
+
+ZLM 的做法是让 POST session 成为“转发代理”，把 POST 的 playload 丢给 GET session 统一处理
+这样协议状态机里只集中在 getter 一侧，避免两套状态分裂
+
+
+补充 RTSP  over HTTP ：
+> RTSP over HTTP 也叫RTSP tunneling，通常采用：一条 HTTP GET 长连接承载下行(RTSP 响应 + RTp/RTCP）、一条HTTP POST 承载上行(RTSP 请求)。这里很多播放器/服务器都采用的模式(Real/QuickTIme/部分FFmpeg 生态都这么干过)
+
+一个简化的时序：
+1. 客户端发 GET /rtsp_tunnel ... x-sessioncookie=abc
+2. 服务端记录 getter(session A)
+
+1）创建阶段(客户端生成，服务端接收)
+在 RTSP over HTTP 模式下，客户端会在两次 HTTP 请求头都带同一个 x-sessioncookie：
+
+- 第一次 GET: x-sessioncookie: abc
+- 第二次 POST: x-sessioncookie: abc
+服务端不主动生成这个值，而是读取客户端提供值。
+
+2) 绑定阶段(GET 注册，POST 查找)
+A. GET 到达：注册 getter
+handleReq_Get 里做两件事：
+
+1. _http_x_sessioncookie = parser["x-sessioncookie"];
+2. g_mapGetter[_http_x_sessioncookie] = shared_from_this();（弱引用）
+即：全局表 g_mapGetter 记录
+sessioncookie -> getter RtspSession(weak_ptr)
+
+并加 g_mtxGetter 锁保证并发安全。
+
+B. POST 到达：用 sessioncookie 反查 getter
+handleReq_Post：
+
+1. 读取 sessioncookie = parser["x-sessioncookie"]
+2. 在 g_mapGetter 查找对应 getter
+3. 找到后立刻 erase(sessioncookie)（一次性消费）
+4. 设置 poster 的 _on_recv，把后续数据转发给 getter
+这里“立刻删除”是关键：
+避免同一个 cookie 被多个 poster 重复绑定，减少歧义和重放问题。
+
+3) 运行阶段 (cokie 不再参与数据面)
+绑定完成后，真正数据流靠 _on_recv 闭包维持，不再每包查 g_mapGetter：
+
+- poster 收到 body（base64 RTSP 请求）
+- 解码后 async 投递到 getter 线程
+- 调 httpGetterStrong->onRecv(...) 进入正常 RTSP input(...) 流程
+也就是说：
+
+- x-sessioncookie 只用于一次性配对
+- 配对完成后转发链路靠对象引用（weak/strong）维持
+
+4) 清理阶段 (防泄漏与失效)
+
+生命周期结束时有两层清理：
+
+A. 正常配对后清理
+在 handleReq_Post 成功找到 getter 后：
+
+- g_mapGetter.erase(sessioncookie) 已完成清理
+
+B. 异常断开兜底清理
+```cpp
+if (_http_x_sessioncookie.size() != 0) {
+    g_mapGetter.erase(_http_x_sessioncookie);
+}
+```
+防止 getter 已登记但还没被 poster 消费时，连接断开导致 map 残留。
+
+
+5) sessioncookie 的“维护策略”总结
+来源：客户端提供
+存储：g_mapGetter（全局 map，value 为 weak_ptr<RtspSession>）
+并发保护：g_mtxGetter（递归锁）
+消费模型：一次注册，一次匹配后删除
+失效处理：weak_ptr.lock()失败即对象已销毁，poster主动 shutdown(...)
+异常兜底：onError 再次尝试 map 删除
+
+
+6) 作用边界（避免误解）
+x-sessioncookie 不是：
+
+用户身份认证凭证
+推拉流权限 token
+长期会话 ID（RTSP 的 _sessionid 是另一个概念）
+x-sessioncookie 就是：
+
+HTTP GET/POST 双通道配对键（transport tunnel binding key）
+
+
+
+> 很多“穿代理/防火墙”的长连接方案都会出现 GET + POST 双通道 的设计思想
 ---
 
 
