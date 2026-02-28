@@ -248,6 +248,7 @@ ZLM 的做法是让 POST session 成为“转发代理”，把 POST 的 playloa
 1. 客户端发 GET /rtsp_tunnel ... x-sessioncookie=abc
 2. 服务端记录 getter(session A)
 
+```text
 1）创建阶段(客户端生成，服务端接收)
 在 RTSP over HTTP 模式下，客户端会在两次 HTTP 请求头都带同一个 x-sessioncookie：
 
@@ -297,11 +298,11 @@ A. 正常配对后清理
 - g_mapGetter.erase(sessioncookie) 已完成清理
 
 B. 异常断开兜底清理
-```cpp
+
 if (_http_x_sessioncookie.size() != 0) {
     g_mapGetter.erase(_http_x_sessioncookie);
 }
-```
+
 防止 getter 已登记但还没被 poster 消费时，连接断开导致 map 残留。
 
 
@@ -321,10 +322,9 @@ x-sessioncookie 不是：
 推拉流权限 token
 长期会话 ID（RTSP 的 _sessionid 是另一个概念）
 x-sessioncookie 就是：
-
 HTTP GET/POST 双通道配对键（transport tunnel binding key）
 
-
+```
 
 > 很多“穿代理/防火墙”的长连接方案都会出现 GET + POST 双通道 的设计思想
 ---
