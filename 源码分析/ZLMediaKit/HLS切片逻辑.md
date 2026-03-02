@@ -69,3 +69,28 @@ HlsMediaSource::setIndexFile(data)
        └─ 后续 HTTP 请求命中时直接返回内存数据（避免磁盘 IO）
 
 ```
+浏览器请求 .ts 分片
+
+```text
+播放器 GET /live/test/2026-03-02/03/10-00_5.ts
+  └─ HttpSession → HttpFileManager::process(...)
+       └─ 找到 ts 文件路径（已在磁盘）
+            └─ Socket::send(文件数据流) → 浏览器
+```
+
+
+服务器关闭--清理HLS 文件
+```text
+ZLM 关闭 / 流断开
+  └─ RtspSession 析构 → RtspMediaSourceImp 析构
+       └─ MultiMediaSourceMuxer 析构
+            └─ _hls.reset()               ← HlsRecorder 析构
+                 └─ HlsMakerImp::~HlsMakerImp()
+                      └─ clearCache(false, true)  ← eof=true
+                           ├─ flushLastSegment(true)  ← 关闭最后一个 ts 文件
+                           │    └─ makeIndexFile(..., eof=true)
+                           │         └─ onWriteHls(...) 写含 #EXT-X-ENDLIST 的 m3u8
+                           └─ [直播模式] 延迟删除 ts 文件 + m3u8
+                                └─ _poller->doDelayTask(delay*1000, clearHls)
+
+```
