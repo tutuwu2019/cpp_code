@@ -94,3 +94,19 @@ ZLM 关闭 / 流断开
                                 └─ _poller->doDelayTask(delay*1000, clearHls)
 
 ```
+
+总结RTP 的推送机制
+```text
+RTP帧
+  → RtpReceiver排序
+  → Frame
+  → MultiMediaSourceMuxer::onTrackFrame_l
+  → HlsRecorder::inputFrame
+  → TsMuxer封装
+  → HlsMaker::inputData（关键帧触发切片）
+  → onOpenSegment（创建.ts文件）
+  → onWriteSegment（fwrite数据）
+  → flushLastSegment（关闭ts文件）
+  → makeIndexFile（写m3u8）
+  → 浏览器HTTP GET .m3u8 → .ts → 解码播放
+```
