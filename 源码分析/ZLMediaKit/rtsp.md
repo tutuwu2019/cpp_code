@@ -169,3 +169,100 @@ sequenceDiagram
     4. RTP 时间戳/同步问题
     5. 认证/鉴权
     6. 切换码流/断线重连
+
+
+
+
+```text
+RtspPlayer::play()
+    │
+    ├─ 设置超时定时器 _play_check_timer
+    └─ startConnect(host, port, timeout)
+
+TcpClient::startConnect()
+    │
+    ├─ 创建 _timer（心跳 + alive标志）
+    ├─ createSocket()（新建 fd）
+    ├─ setOnErr(...)（注册错误回调）
+    └─ sock->connect(host, port, onSockConnect_cb)
+              │
+              │  非阻塞 ::connect() 返回 EINPROGRESS
+              │
+              ▼
+         epoll 监听 fd 的 EPOLLOUT 事件
+              │
+              │  TCP 三次握手完成（或失败）
+              │
+              ▼
+         Socket 检查 SO_ERROR
+              │
+              ▼
+         onSockConnect_cb(err)
+
+TcpClient::onSockConnect()
+    │
+    ├─ 若失败 → onConnect(err) → onPlayResult_l(失败) → 触发失败回调
+    │
+    └─ 若成功
+          ├─ setOnFlush(...)      注册"发完"回调
+          ├─ setOnRead(...)       注册"收到数据"回调  ←── 关键
+          └─ onConnect(Err_success)
+
+RtspPlayer::onConnect()  ← 回到 RTSP 层
+    │
+    └─ sendOptions()
+            │ send OPTIONS → ::send(fd, ...) via Socket
+            │
+            │ 服务器返回 OPTIONS 响应
+            │ epoll 通知 fd 可读
+            │ Socket::recv() 读数据
+            │ setOnRead lambda 触发
+            │ RtspPlayer::onRecv(buf)
+            │ RtspSplitter::input()
+            │ onWholeRtspPacket(parser)
+            │ _on_response(parser)
+            ▼
+        sendDescribe()
+            │ 发 DESCRIBE ... 收 SDP
+            ▼
+        handleResDESCRIBE()
+            │ 解析 SDP，创建 _demuxer
+            ▼
+        sendSetup(0)
+            │ 发 SETUP ... 收服务器确认的传输参数
+            ▼
+        handleResSETUP()
+            │ 若有多个 track → sendSetup(1) → ...
+            │ 全部完成后 → sendPause(type_play, 0)
+            ▼
+        发送 PLAY 命令
+            │ 服务器回 200 OK
+            ▼
+        handleResPAUSE()
+            │
+            ▼
+        onPlayResult_l(Err_success, false)
+            │
+            ▼
+        onPlayResult(ex)  虚函数
+            │
+            ▼
+        PlayerImp::onPlayResult() → 触发 _on_play_result 回调
+            │
+            ▼
+        DecodePipeline::tryAttachPlayerTracks()
+
+此后，服务器持续发送 RTP 包：
+    epoll 可读
+    → onRecv(buf)
+    → RtspSplitter → onRtpPacket(data)
+    → handleOneRtp()
+    → onRtpSorted()
+    → onRecvRTP()  虚函数
+    → RtspPlayerImp::onRecvRTP()
+    → _demuxer->inputRtp(rtp)
+    → Track 上的 delegate 被回调
+    → EncodedFrameSink::inputFrame(frame)
+    → DecodePipeline::onEncodedFrame(frame)
+    → _decoder->decode(data, pts, dts)
+```
