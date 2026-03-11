@@ -78,3 +78,19 @@ string addBinary(string a, string b) {
     }
 
 ```
+
+### 136 只出现一次的数字
+
+> 需要知道亦或运算的基本性质
+
+
+```cpp
+int singleNumber(vector<int>& nums) {
+        int ret = 0;
+        // 亦或运算满足交换律、结合律以及自反
+        // a ^ a = 0
+        // 0 ^ a = a
+        for (auto e: nums) ret ^= e;
+        return ret;
+    }
+```
