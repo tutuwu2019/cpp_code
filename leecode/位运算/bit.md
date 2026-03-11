@@ -19,3 +19,36 @@
 // 最后亦或 亦或的意思是，相同为0不同为1
   return mask ^ n;
 ```
+
+### leetcode 29 两数相除
+
+```cpp
+int divide(int dividend, int divisor) {
+        // 边界处理
+        
+        if(dividend == INT_MIN && divisor == -1){
+            return INT_MAX;
+        }
+        
+
+        //  int 中最小的数  -2^32=-2147483648  如果直接用 abs((-2147483648)-2147483648) 会抛出内存溢出
+        //  int 中最大的数  2^32-1=2147483647
+        /*
+            其实这个算法，采用的是多项式拆解的思路
+        */
+        bool flag = (dividend > 0) ^ (divisor > 0);
+        long long a = abs((long long)dividend);
+        long long b = abs((long long )divisor);
+        long long ans = 0;
+        while( a >= b){
+            long long tmp = b, mul = 1;
+            while( a >= (tmp << 1)){
+                tmp = tmp << 1;
+                mul = mul << 1;
+            }
+            a -= tmp;
+            ans += mul;
+        }
+        return flag ? (-ans) : ans;
+    }
+```
