@@ -97,6 +97,8 @@ int singleNumber(vector<int>& nums) {
 
 ### 137 只出现一次的数字II
 
+> 注意啊，通过这个算法，可以类推 n - 1 个数出现了 x 次，剩下的那个数只出现了1次
+
 ```cpp
 int singleNumber(vector<int>& nums) {
         int ans = 0;;
