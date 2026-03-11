@@ -94,3 +94,21 @@ int singleNumber(vector<int>& nums) {
         return ret;
     }
 ```
+
+### 137 只出现一次的数字II
+
+```cpp
+int singleNumber(vector<int>& nums) {
+        int ans = 0;;
+        for(int i = 0; i < 32; i++){
+            int x = 0;
+            for(auto num : nums){
+                x += (num >> i) & 1;      // 对于每个数字 在 Int 上的每一位 累加    每一位 通过  i 做基准 相加  因为  num >> i  获取的是  最低位位i 的值，比如 i = 2,然后 x = 10101  => 对应 的值为16+4+1=21 对应 >> 2 的值为 101  然后 i 位的值需要通过 & 1 运算的出结果， 101 & 001 = 1   
+            }
+            ans |= (x % 3) << i ;        // 这里是先通过位移得到该位的那个唯一数字的 值 然后通过 亦或得到该位的值   因为 亦或不会影响原有的值，很简单  如果原来这个位为 1， 那么 1 | x = 1  (如果x = 0)。  如果这个位原来为0  那么 0 | x  = 1  (如果 x = 1)
+            
+        }
+        return ans;
+    }
+
+```
