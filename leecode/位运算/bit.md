@@ -114,3 +114,33 @@ int singleNumber(vector<int>& nums) {
     }
 
 ```
+
+
+### leetcode 260 只出现一次的数字III
+
+> 对于任意非零整数 x，x & (-x) 的结果是只保留 x 最低位的 1，其余位都变为 0。
+
+
+```cpp
+// 注意 xorAll 必须要要用 unsigned int 来表示，否则 在求  反码 的时候会由内存溢出
+//  [1,1,0,-2147483648]  其中  -2147483648 对应的 unsigned int  为 2^32 + (-2147483648)  = 2^31 = 2147483648  如果用 int 表示就内存溢出了
+
+vector<int> singleNumber(vector<int>& nums){
+    unsigned int xorAll = 0;
+    for(auto& num : nums){
+      xorAll ^= num;    //求 a^b
+    }
+    // 根据 源码与反码 做 与运算的性质找到最低为为1 的位置
+    unsigned int x = xorAll & (-xorAll);
+    int a = 0, b = 0
+    for(auto& num : nums){
+      // a 在那个位置上为1
+      if(num & x){
+        a ^= num;
+      }else{
+        b ^= num;
+      }
+  }
+  return {a, b};
+}
+```
