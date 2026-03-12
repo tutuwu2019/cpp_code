@@ -195,3 +195,81 @@ int findDuplicate(vector<int>& nums) {
     }
 
 ```
+
+### 645 错误的集合
+
+> 很综合的位运算
+
+```text
+集合 s 包含从 1 到 n 的整数。不幸的是，因为数据错误，导致集合里面某一个数字复制成了集合里面的另外一个数字的值，导致集合 丢失了一个数字 并且 有一个数字重复 。
+
+给定一个数组 nums 代表了该集合发生错误后的结果。
+
+请你找出重复出现的整数，再找到丢失的整数，将它们以数组的形式返回。
+
+ 
+
+示例 1：
+
+输入：nums = [1,2,2,4]
+输出：[2,3]
+示例 2：
+
+输入：nums = [1,1]
+输出：[1,2]
+ 
+输入：nums =[1,2,2,4]
+输出：[2,3]
+
+提示：
+
+2 <= nums.length <= 104
+1 <= nums[i] <= 104
+```
+
+```cpp
+vector<int> findErrorNums(vector<int>& nums) {
+        int n = nums.size();
+        
+        unsigned int xorAll = 0;
+        for(int i = 1; i <= n; i++){
+            xorAll ^= i;
+        }
+
+        for(int num : nums){
+            xorAll ^= num;
+        }
+
+        unsigned int bit = xorAll & (-xorAll);
+        int group1 = 0, group2 = 0;
+            
+        for(int i = 1; i <= n; i++){
+            
+            if(bit & i){
+                group1 ^= i;
+            }else{
+                group2 ^= i;
+            }
+        }
+        //int flag = 1;
+        for(auto num : nums){
+            if(bit & num){
+                group1 ^= num;
+                //flag = 1;
+            }else{
+                group2 ^= num;
+                //flag = 2;
+            }
+                
+        }
+        for(auto num : nums){
+            if(num == group1){
+                return{group1, group2};
+            }
+        }
+        return {group2, group1};
+
+        
+    }
+
+```
