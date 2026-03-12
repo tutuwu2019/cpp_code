@@ -144,3 +144,20 @@ vector<int> singleNumber(vector<int>& nums){
   return {a, b};
 }
 ```
+
+
+### 389 找不同
+
+```cpp
+char findTheDifference(string s, string t) {
+        char res = 0;       //  如果定义为 char res = ' '; 那么对应的 ASCII  值为32 ，对应求到的值是 'a' + 32 = 'A'   具体的 ' ' ^ 'a' = 'A'
+        for(char c : s){
+            res ^= c;
+        }
+        for(char c : t){
+            res ^= c;
+        }
+        return res;
+    }
+
+```
