@@ -161,3 +161,37 @@ char findTheDifference(string s, string t) {
     }
 
 ```
+
+### 287 寻找重复数字
+
+> 还可以用Floyd 判圈算法，快慢指针
+
+```cpp
+int findDuplicate(vector<int>& nums) {
+        int n = nums.size() - 1;
+
+        int res = 0;
+        for(int i = 0; i < 32; i++){
+            int bit  = 1 << i;
+            int count_nums = 0;
+            int count_count = 0;
+
+            for(auto num : nums){
+                if(bit & num){
+                    count_nums++;
+                }
+            }
+
+            for(int j = 1; j <= n; j++){
+                if(j & bit){
+                    count_count++;
+                }
+            }
+            if(count_nums > count_count){
+                res |= bit;
+            }
+        }
+        return res;
+    }
+
+```
