@@ -5,5 +5,6 @@
 ## SharedMutex 读写锁
 ## RWSpinLock 纯自旋锁
 
+RWSpinLock 默认优先权是读锁，而SharedMutex 默认优先权是写锁，但是其读写均可。
 
 ## Upgradeable 语义
