@@ -194,6 +194,36 @@ int main(){
 }
 ```
 
+思考方法二：手动分割+双指针
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+int main() {
+    string s;
+    getline(cin, s);
+    vector<string> words;
+    int start = 0;
+    for (int i = 0; i <= s.size(); ++i) {
+        if (i == s.size() || s[i] == ' ') {
+            if (start < i) {
+                words.push_back(s.substr(start, i - start));
+            }
+            start = i + 1;
+        }
+    }
+    for (int i = words.size() - 1; i >= 0; --i) {
+        cout << words[i];
+        if (i > 0) cout << " ";
+    }
+    cout << endl;
+    return 0;
+}
+
+```
+
 ---
 
 ####
