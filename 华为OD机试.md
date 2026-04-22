@@ -247,6 +247,27 @@ int main(){
 }
 ```
 
+#### HJ 15 求 int 型正整数在内存中存储时1的个数
+
+
+注意 : n &(n - 1) 会消除n 的最右边的那个1  然后通过 循环，每轮消除，直到 n 变成了0
+
+```cpp
+
+int main(){
+  int n = 0;
+  cin>>n;
+  int count = 0;
+  while(n){
+    n &= (n - 1);
+    count++;
+  }
+  cout<<count<<std::endl;
+
+  return 0;
+}
+```
+
 ---
 
 ####
