@@ -163,7 +163,36 @@ int main(){
 
 
 ```
+#### 句子逆序
 
+```cpp
+include <sstream>
+#include <iostreawm>
+#include <vector>
+
+using namespace std;
+
+int main(){
+  string line;
+  getline(cin, line);
+
+  vector<string> words;
+  stringstrewam ss(line);
+  string word;
+  while(ss >> word){
+    words.push_back(word);
+  }
+
+  for(int i = words.size() - 1; i >= 0; i--){
+    std::cout<<words[i];
+    if(i > 0){
+      cout<<" ";
+    }
+  }
+  std::cout<<std<<endl;
+  return 0;
+}
+```
 
 ---
 
