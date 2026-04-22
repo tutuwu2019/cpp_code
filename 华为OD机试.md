@@ -138,6 +138,35 @@ unordered_set、stdoi
 **想想对数字颠倒的封装**
 
 
+#### Hj12 反转字符串
+
+左右指针，原地反转，零内存开销
+
+```cpp
+
+int main(){
+  string str;
+  cin>>str;
+
+  int n = str.size();
+  int left = 0, right = n - 1;
+  while(left < right){
+    swap(str[left], str[right]);
+    left++;
+    right--;
+  }
+  std::cout<<str<<std::endl;
+
+  return 0;
+}
+
+
+
+```
+
+
+---
+
 ####
 ### 模拟
 
