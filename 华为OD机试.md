@@ -223,6 +223,29 @@ int main() {
 }
 
 ```
+####  HJ 14 字符串排序
+
+```cpp
+#include <algorithm>
+#include <vector>
+#include <iostreaw>
+
+using namespace std;
+
+int main(){
+  int n = 0;
+  cin>>n;
+  vector<words> words(n);
+  for(int i = 0; i < n; i++){
+    cin>>words[i];
+  }
+  sort(words.begin(), words.end());
+  for(int i = 0; i < n; i ++){
+    cout<<words[i]<<std::endl;
+  }
+  return 0;
+}
+```
 
 ---
 
