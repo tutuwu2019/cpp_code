@@ -268,6 +268,12 @@ int main(){
 }
 ```
 
+
+#### HJ16  购物单
+<img width="1350" height="2653" alt="image" src="https://github.com/user-attachments/assets/ab4ed3b8-7ef6-49ad-8427-48962ebd7dab" />
+
+
+
 ---
 
 ####
