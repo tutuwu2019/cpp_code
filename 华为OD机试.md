@@ -288,6 +288,50 @@ int main(){
 > todo 
 
 
+#### HJ 21 简单密码
+
+> 键盘7跟9有四个字母表示
+
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int main() {
+    string str;
+    while(getline(cin, str)){
+        for(auto& ch : str){
+            if(ch >= 'A' && ch <= 'Z'){
+                if(ch == 'Z'){
+                    ch = 'a';
+                }else{
+                    ch = ch + 1 + ('a' - 'A');
+                }
+            }else if( ch >= 'a' && ch <= 'z'){
+                if(ch >= 'a' && ch <= 'c') ch = '2';
+                else if(ch >= 'd' && ch <= 'f') ch = '3';
+                else if(ch >= 'g' && ch <= 'i') ch = '4';
+                else if(ch >= 'j' && ch <= 'l') ch = '5';
+                else if(ch >= 'm' && ch <= 'o') ch = '6';
+                else if(ch >= 'p' && ch <= 's') ch = '7';
+                else if(ch >= 't' && ch <= 'v') ch = '8';
+                else if(ch >= 'w' && ch <= 'z') ch = '9';
+            }
+
+        }
+        cout<<str<<endl;
+    }
+    
+
+    return 0;
+    
+}
+// 64 位输出请用 printf("%lld")
+
+```
+
+
 ---
 
 ####
