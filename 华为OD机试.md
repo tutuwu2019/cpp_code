@@ -331,6 +331,22 @@ int main() {
 
 ```
 
+#### HJ 22 汽水瓶
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int n;
+    // 空瓶数大于等于3时不断兑换；剩余2个空瓶时向老板借一个换汽水并归还
+    while(cin>>n && n != 0){
+        cout<<n / 2<<endl;
+    }
+
+    return 0;
+}
+```
 
 ---
 
