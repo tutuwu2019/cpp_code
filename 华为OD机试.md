@@ -331,7 +331,7 @@ int main() {
 
 ```
 
-#### HJ 22 汽水瓶
+#### HJ22 汽水瓶
 
 ```cpp
 #include <iostream>
@@ -348,6 +348,42 @@ int main() {
 }
 ```
 
+
+#### HJ23 删除字符串中出现次数最小的字符
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+int main() {
+    string str;
+    while(cin>>str){
+        int freq[26] ={0};
+        for(auto& ch : str){
+            freq[ch - 'a']++;
+        }
+
+        int min_ = 1000;
+        for(int i = 0; i < 26; i++){
+            if(freq[i] > 0){
+                min_ = min(min_, freq[i]);
+            }
+        }
+
+        string out_;
+        for(auto& ch : str){
+            if(freq[ch - 'a'] != min_){
+                out_ += ch;
+            }
+        }
+        cout<<out_<<endl;
+    }
+
+    return 0;
+    
+}
+```
 ---
 
 ####
