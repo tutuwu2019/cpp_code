@@ -1,0 +1,104 @@
+
+
+### 3932 统计区间内完全K次幂数量
+
+```cpp
+class Solution {
+public:
+    typedef long long ll;
+
+    // 整数快速幂：计算 base^k，若超过 limit 则提前返回 limit+1（防溢出）
+    ll pow_int(ll base, int k, ll limit) {
+        ll res = 1;
+        while (k > 0) {
+            if (k & 1) {
+                if (base > 0 && res > limit / base) return limit + 1;
+                res *= base;
+            }
+            k >>= 1;
+            if (k > 0 && base > 0 && base > limit / base) return limit + 1;
+            base *= base;
+        }
+        return res;
+    }
+    
+    // 二分查找：最小的 x 使得 x^k >= target
+    ll lowerBound(ll target, int k) {
+        if (target <= 0) return 0;
+        ll left = 0, right = 2e9;  
+        while (left < right) {
+            ll mid = left + (right - left) / 2;
+            if (pow_int(mid, k, target) >= target) 
+                right = mid;
+            else 
+                left = mid + 1;
+        }
+        return left;
+    }
+    
+    // 二分查找：最大的 x 使得 x^k <= target
+    ll upperBound(ll target, int k) {
+        if (target < 0) return -1;
+        ll left = 0, right = 2e9;
+        while (left < right) {
+            ll mid = left + (right - left + 1) / 2;
+            if (pow_int(mid, k, target) <= target) 
+                left = mid;
+            else 
+                right = mid - 1;
+        }
+        return left;
+    }
+    
+    int countKthRoots(ll l, ll r, int k) {
+        if (k <= 0 || l > r) return 0; 
+        
+        ll lo = lowerBound(l, k);   
+        ll hi = upperBound(r, k);   
+        
+        return (hi >= lo) ? (hi - lo + 1) : 0;
+    }
+};
+
+```
+
+
+还有一种，动态规划的解法
+
+```cpp
+
+class Solution {
+public:
+
+    long long mypow(long long x, int k){
+        long long ans = 1;
+        while(k){
+            if(k % 2 == 1){
+                ans *= x;
+                
+            }
+            k /= 2;
+            x *= x;
+        }
+        return ans;
+    }
+
+    int f(int n, int k){
+        if(n < 0){
+            return 0;
+        }
+
+        int x = pow(n, 1.0 / k);
+
+        if(mypow(x + 1, k) <= n){
+            x++;
+        }
+        return x + 1;
+    }
+    
+    int countKthRoots(int l, int r, int k) {
+        return f(r, k) - f(l - 1, k);
+    }
+};
+
+```
